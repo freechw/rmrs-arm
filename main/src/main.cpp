@@ -1,7 +1,13 @@
 #include "unit.h"
+#include "net.h"
 #include <stdio.h>
 #include <vector>
+#include <list>
+#include <string>
 
+
+using std::list;
+using std::string;
 using std::vector;
 
 int main()
@@ -29,9 +35,22 @@ int main()
 
     unit1.startSender();
 
+
+
+    Net netCenter;
+    netCenter.setIdentifier(0x11223344);
+    netCenter.setIpPort("192.168.1.158", 8000);
+    netCenter.start();
+
+    unit1.setNetObject(&netCenter);
+
     for (int i = 0; i < 4; i++)
     {
-        unsigned char * pchar = NULL;
+        unsigned char *pchar = new unsigned char[38];
+        for (int j = 0; j < 38; j++)
+        {
+            pchar[j] = j;
+        }
         unit1.addReadyMeterData(pchar);
     }
 

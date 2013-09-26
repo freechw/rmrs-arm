@@ -1,4 +1,5 @@
 #include "unit.h"
+#include "net.h"
 #include <list>
 #include <vector>
 #include <sys/socket.h>
@@ -66,10 +67,9 @@ void Unit::addReadyMeterData(unsigned char * dataBuf)
     currentMeterNumber++;
 }
 
-void Unit::setTcpObject(int * tcp)
+void Unit::setNetObject(Net * net)
 {
-    //TO do
-    //save the tcp object
+    _net = net;
 }
 
 void Unit::startSender()
@@ -78,7 +78,7 @@ void Unit::startSender()
     status = pthread_create(&_thdSender, NULL, senderProcess, this);
     if (0 != status)
     {
-        //printf("sender thread creation failed!\n");
+        printf("sender thread creation failed!\n");
         //exit(0);
     }
 }
@@ -90,11 +90,19 @@ void Unit::meterDataUploadProcess()
     {
         sem_wait(&uploadDataReadySignal);
         sem_wait(&readyLineLock);
-        list<unsigned char *> meterData = readyLine;
-        readyLine.clear();
-        sem_post(&readyLineLock);
-        //(*_tcp).sendMeterData(unitId, meterData);
-        printf("I'm Unit%d, send Message\n", unitId);
+        if (false == readyLine.empty())
+        {
+            list<unsigned char *> meterData = readyLine;
+            readyLine.clear();
+            sem_post(&readyLineLock);
+            printf("unit.cpp:meterDataUploadProcess():Unit%d, send Message\n", unitId);
+            (*_net).sendMeterData(unitId, meterData);
+        }
+        else
+        {
+            sem_post(&readyLineLock);
+            printf("unit.cpp:meterDataUploadProcess():Unit%d, Line Empty!\n", unitId);
+        }
     }
 
     pthread_exit(0);

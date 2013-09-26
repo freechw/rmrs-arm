@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include "net.h"
 
 class Unit
 {
@@ -15,7 +16,7 @@ class Unit
         std::vector<int> getCurrentMeterIds();
         int getCurrentMeter();
         void addReadyMeterData(unsigned char dataBuf[]);
-        void setTcpObject(int* tcp);//TO do, change int type to my own tcp class
+        void setNetObject(Net * net);//TO do, change int type to my own tcp class
         void startSender();
         void setCurrentLineFull();
         bool getCurrentLineFull();
@@ -30,7 +31,7 @@ class Unit
         unsigned int currentMeterNumber;
         std::vector<int> currentLine;
         std::list<unsigned char *> readyLine;
-        int* _tcp;
+        Net * _net;
         void loadCurrentMeters();
 
         pthread_t _thdSender;
