@@ -96,7 +96,7 @@ void Unit::meterDataUploadProcess()
             readyLine.clear();
             sem_post(&readyLineLock);
             printf("unit.cpp:meterDataUploadProcess():Unit%d, send Message\n", unitId);
-            (*_net).sendMeterData(unitId, meterData);
+            _net->sendMeterData(unitId, meterData);
         }
         else
         {

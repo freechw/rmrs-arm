@@ -1,6 +1,7 @@
 #include "net.h"
 #include <vector>
 #include <list>
+#include <map>
 
 //for net
 #include <sys/socket.h>
@@ -18,6 +19,7 @@
 using std::list;
 using std::vector;
 using std::string;
+using std::map;
 
 void* listenerProcess(void * agrs);
 
@@ -277,8 +279,9 @@ void Net::unPackage(vector<unsigned char> data)
             if (0x7d == data[0])
             {
                 unsigned int meterNum = data[1];
-                vector<short> unitIds(meterNum);
-                vector<int> meterIds(meterNum);
+                printf("net.cpp:unPackage():meter num is %d\n", meterNum);
+                vector<short> unitIds;
+                vector<int> meterIds;
                 for (int i = 0; i < meterNum; i++)
                 {
                     unsigned int tmpMeterBase = 2 + (i * 6);
@@ -289,9 +292,36 @@ void Net::unPackage(vector<unsigned char> data)
                     printf("net.cpp:unPackage():unitId is 0x%.2x, meterId is 0x%.2x\n",
                             unitIds.back(), meterIds.back());
                 }
-                //insert meter id to each unit
+                insertMeter(unitIds, meterIds);
             }
         }
     }
 }
 
+void Net::setUnitMap(map<short, Unit *> * pUnitMap)
+{
+    _pUnitMap = pUnitMap;
+}
+
+void Net::insertMeter(vector<short> unitIds, vector<int> meterIds)
+{
+    printf("net.cpp:insertMeter():meter num is %d\n", unitIds.size());
+    for (int i = 0; i < (int)unitIds.size(); i++)
+    {
+        if ( _pUnitMap->end() != _pUnitMap->find(unitIds[i]))
+        {
+            printf("net.cpp:insertMeter():insert meter id to existed unit 0x%.2x\n", unitIds[i]);
+            (*_pUnitMap)[unitIds[i]]->addMeterId(meterIds[i]);
+        }
+        else
+        {
+            printf("net.cpp:insertMeter():insert meter id to new unit 0x%.2x\n", unitIds[i]);
+            Unit * pTmpUnit = new Unit();
+            pTmpUnit->setUnitId(unitIds[i]);
+            pTmpUnit->setNetObject(this);
+            _pUnitMap->insert(map<short, Unit *>::value_type(unitIds[i], pTmpUnit));
+            (*_pUnitMap)[unitIds[i]]->startSender();
+            (*_pUnitMap)[unitIds[i]]->addMeterId(meterIds[i]);
+        }
+    }
+}

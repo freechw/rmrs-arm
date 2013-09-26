@@ -6,7 +6,8 @@
 #include <sys/socket.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include "net.h"
+//#include "net.h"
+class Net;
 
 class Unit
 {
