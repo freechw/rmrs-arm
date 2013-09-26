@@ -19,6 +19,8 @@ using std::list;
 using std::vector;
 using std::string;
 
+void* listenerProcess(void * agrs);
+
 void Net::sendMeterData(short unitId, list<unsigned char *> data)
 {
     vector<unsigned char> unitData;
@@ -110,7 +112,7 @@ vector<unsigned char> Net::package(vector<unsigned char> data)
     }
 
     //push data command code to rtnData
-    rtnData.push_back(0x80);
+    rtnData.push_back(0x00);
 
     //push data length to rtnData
     int dataLength = (int)data.size();
@@ -130,6 +132,14 @@ vector<unsigned char> Net::package(vector<unsigned char> data)
 void Net::start()
 {
     connectServer();
+    int status;
+    status = pthread_create(&_thdListener, NULL, listenerProcess, this);
+    if (0 != status)
+    {
+        printf("listener thread creation failed!\n");
+        //exit(0);
+    }
+
 }
 
 void Net::netSend(vector<unsigned char> data)
@@ -154,7 +164,7 @@ Net::Net()
     _host = "127.0.0.1";
 }
 
-void listenerProcess(void * args)
+void* listenerProcess(void * args)
 {
     Net * net = (Net *)args;
     net->listener();
@@ -163,6 +173,9 @@ void listenerProcess(void * args)
 void Net::listener()
 {
     unsigned char headBuf[13];
+    /*************DEBUG************/
+    printf("net.cpp:listener():listener start!\n");
+    /******************************/
     while (true)
     {
         bzero(&headBuf, sizeof(headBuf));
@@ -195,6 +208,90 @@ void Net::listener()
         }
 
         /******DEBUG**********/
+        printf("net.cpp:listener():receved header!\n");
+        /*********************/
+
+        //check identifier and if pass, recv bytes until recived all data
+        int headerId = *(int *)(&headBuf[0]);
+        if (headerId == identifier)
+        {
+            if(0x00 == headBuf[8])
+            {
+                int dataLength = *(int *)(&headBuf[9]);
+                /***********DEBUG**************/
+                printf("net.cpp:listener():data length is %d\n", dataLength);
+                /******************************/
+                unsigned char dataBuf[dataLength];
+                bzero(&dataBuf, sizeof(dataBuf));
+                recvNum = 0;
+
+                bool dataReceved = false;
+                while(false == dataReceved)
+                {
+                    int status = recv(socketFd, &dataBuf[recvNum], (dataLength-recvNum), 0);
+                    if (status < 0)
+                    {
+                        printf("Recv Error\n");
+                        continue;
+                    }
+                    else if ((status + recvNum) < dataLength)
+                    {
+                        recvNum += status;
+                        continue;
+                    }
+                    else if (dataLength == (status + recvNum))
+                    {
+                        recvNum +=status;
+                        dataReceved = true;
+                    }
+                    else
+                    {
+                        printf("net.cpp:listener():status + recvNum is %d\n", (status + recvNum));
+                    }
+                }
+                vector<unsigned char> dataVector(dataBuf, dataBuf + (sizeof(dataBuf)/sizeof(unsigned char)));
+                unPackage(dataVector);
+            }
+            else
+            {
+                //is not data package
+            }
+        }
+        else
+        {
+            printf("net.cpp:listener():wrong identifier, recv is 0x%.2x,my is 0x%.2x\n",
+                    headerId, identifier);
+        }
+    }
+}
+
+void Net::unPackage(vector<unsigned char> data)
+{
+    if (false == data.empty())
+    {
+        //ack this command
+        netSend(package(data));
+
+        if ((unsigned char)data.size() == ((data[1] * 6) + 2))
+        {
+            if (0x7d == data[0])
+            {
+                unsigned int meterNum = data[1];
+                vector<short> unitIds(meterNum);
+                vector<int> meterIds(meterNum);
+                for (int i = 0; i < meterNum; i++)
+                {
+                    unsigned int tmpMeterBase = 2 + (i * 6);
+                    unitIds.push_back(*(short *)(&data[tmpMeterBase]));
+                    meterIds.push_back(*(int *)(&data[2 + tmpMeterBase]));
+
+                    /**********DEBUG***************/
+                    printf("net.cpp:unPackage():unitId is 0x%.2x, meterId is 0x%.2x\n",
+                            unitIds.back(), meterIds.back());
+                }
+                //insert meter id to each unit
+            }
+        }
     }
 }
 

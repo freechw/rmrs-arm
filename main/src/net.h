@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <semaphore.h>
+#include <pthread.h>
 
 #define METER_DATA_LENGTH 38
 
@@ -29,7 +30,8 @@ class Net
         void listener();
         void unPackage(std::vector<unsigned char> data);
         void ack(std::vector<unsigned char> data);
-        friend void listenerProcess(void *);
+        pthread_t _thdListener;
+        friend void* listenerProcess(void *);
 };
 
 #endif
