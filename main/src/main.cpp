@@ -1,6 +1,7 @@
 #include "unit.h"
 #include "net.h"
 #include "reader.h"
+#include "spi.h"
 #include <stdio.h>
 #include <vector>
 #include <list>
@@ -38,22 +39,22 @@ int main()
 //
 //    unit1.startSender();
 
-    map<short, Unit *> mainUnitMap;
-
-    sem_t mapLock;
-    sem_init(&mapLock, 0, 1);
-
-
-
-    Net netCenter;
-    netCenter.setIdentifier(0x11223344);
-    netCenter.setIpPort("192.168.1.158", 8000);
-    netCenter.setUnitMap(&mainUnitMap, &mapLock);
-    netCenter.start();
-
-    Reader mainReader;
-    mainReader.setUnitMap(&mainUnitMap, &mapLock);
-    mainReader.start();
+//    map<short, Unit *> mainUnitMap;
+//
+//    sem_t mapLock;
+//    sem_init(&mapLock, 0, 1);
+//
+//
+//
+//    Net netCenter;
+//    netCenter.setIdentifier(0x11223344);
+//    netCenter.setIpPort("192.168.1.158", 8000);
+//    netCenter.setUnitMap(&mainUnitMap, &mapLock);
+//    netCenter.start();
+//
+//    Reader mainReader;
+//    mainReader.setUnitMap(&mainUnitMap, &mapLock);
+//    mainReader.start();
 
 //    unit1.setNetObject(&netCenter);
 
@@ -66,6 +67,13 @@ int main()
 //        }
 //        unit1.addReadyMeterData(pchar);
 //    }
+
+    Spi spi;
+    spi.setDevices("/dev/spidev1.0", "/dev/my_led");
+    spi.chipOpen();
+    spi.chipWrite(0x12, 0x13);
+    printf("main():0x12 register is 0x%.2x\n", spi.chipRead(0x12));
+
 
     while(true);
 
