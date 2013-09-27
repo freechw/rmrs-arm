@@ -1,5 +1,6 @@
 #include "unit.h"
 #include "net.h"
+#include "reader.h"
 #include <stdio.h>
 #include <vector>
 #include <list>
@@ -39,13 +40,20 @@ int main()
 
     map<short, Unit *> mainUnitMap;
 
+    sem_t mapLock;
+    sem_init(&mapLock, 0, 1);
+
 
 
     Net netCenter;
     netCenter.setIdentifier(0x11223344);
     netCenter.setIpPort("192.168.1.158", 8000);
-    netCenter.setUnitMap(&mainUnitMap);
+    netCenter.setUnitMap(&mainUnitMap, &mapLock);
     netCenter.start();
+
+    Reader mainReader;
+    mainReader.setUnitMap(&mainUnitMap, &mapLock);
+    mainReader.start();
 
 //    unit1.setNetObject(&netCenter);
 

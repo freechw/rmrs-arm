@@ -18,7 +18,7 @@ class Net
         void start();
         void setIpPort(std::string host, int port);
         void setIdentifier(int Identifier);
-        void setUnitMap(std::map<short, Unit *> * pUnitMap);
+        void setUnitMap(std::map<short, Unit *> * pUnitMap, sem_t * mapLock);
         Net();
     private:
         int socketFd;
@@ -27,6 +27,7 @@ class Net
         sem_t sendLock;
         std::string _host;
         std::map<short, Unit *> * _pUnitMap;
+        sem_t * _mapLock;
         void connectServer();
         void reConnectServer();
         void netSend(std::vector<unsigned char> data);

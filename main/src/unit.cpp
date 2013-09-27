@@ -30,13 +30,16 @@ void Unit::loadCurrentMeters()
 {
     currentLine.clear();
     sem_wait(&waitingLineLock);
-    list<int>::size_type sz = waitingLine.size();
-    for (int i = 0; (i < 4) && (i < sz); i++)
+    if (false == waitingLine.empty())
     {
-        int tmp;
-        tmp = waitingLine.front();
-        currentLine.push_back(tmp);
-        waitingLine.pop_front();
+        list<int>::size_type sz = waitingLine.size();
+        for (int i = 0; (i < 4) && (i < sz); i++)
+        {
+            int tmp;
+            tmp = waitingLine.front();
+            currentLine.push_back(tmp);
+            waitingLine.pop_front();
+        }
     }
     sem_post(&waitingLineLock);
     currentMeterNumber = 0;
@@ -86,6 +89,7 @@ void Unit::startSender()
 void Unit::meterDataUploadProcess()
 
 {
+    printf("unit.cpp:meterDataUploadProcess():unit 0x%.2x start!\n", unitId);
     while(true)
     {
         sem_wait(&uploadDataReadySignal);

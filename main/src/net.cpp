@@ -298,13 +298,15 @@ void Net::unPackage(vector<unsigned char> data)
     }
 }
 
-void Net::setUnitMap(map<short, Unit *> * pUnitMap)
+void Net::setUnitMap(map<short, Unit *> * pUnitMap, sem_t * mapLock)
 {
     _pUnitMap = pUnitMap;
+    _mapLock = mapLock;
 }
 
 void Net::insertMeter(vector<short> unitIds, vector<int> meterIds)
 {
+    sem_wait(_mapLock);
     printf("net.cpp:insertMeter():meter num is %d\n", unitIds.size());
     for (int i = 0; i < (int)unitIds.size(); i++)
     {
@@ -319,9 +321,10 @@ void Net::insertMeter(vector<short> unitIds, vector<int> meterIds)
             Unit * pTmpUnit = new Unit();
             pTmpUnit->setUnitId(unitIds[i]);
             pTmpUnit->setNetObject(this);
+            pTmpUnit->startSender();
             _pUnitMap->insert(map<short, Unit *>::value_type(unitIds[i], pTmpUnit));
-            (*_pUnitMap)[unitIds[i]]->startSender();
             (*_pUnitMap)[unitIds[i]]->addMeterId(meterIds[i]);
         }
     }
+    sem_post(_mapLock);
 }
