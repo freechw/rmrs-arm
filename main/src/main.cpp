@@ -2,6 +2,7 @@
 #include "net.h"
 #include "reader.h"
 #include "spi.h"
+#include "si4432.h"
 #include <stdio.h>
 #include <vector>
 #include <list>
@@ -71,9 +72,34 @@ int main()
     Spi spi;
     spi.setDevices("/dev/spidev1.0", "/dev/my_led");
     spi.chipOpen();
-    spi.chipWrite(0x12, 0x13);
-    printf("main():0x12 register is 0x%.2x\n", spi.chipRead(0x12));
+//    spi.chipWrite(0x12, 0x13);
+//    printf("main():0x12 register is 0x%.2x\n", spi.chipRead(0x12));
+    Si4432 si4432;
+    si4432.setSpi(&spi);
+    si4432.reset();
+    si4432.init();
+    si4432.setIdleMode();
 
+    vector<unsigned char> testData(7);
+    testData[0] = 0x12;
+    testData[1] = 0x7d;
+    testData[6] = 0x16;
+
+    si4432.fifoSend(testData);
+    if (true == si4432.isReceived())
+    {
+        vector<unsigned char> recvData;
+        recvData = si4432.fifoRead();
+        printf("main.cpp:main():recv data is:");
+        for (int i = 0; i < (int)recvData.size(); i++)
+        {
+            printf(" 0x%.2x ", recvData[i]);
+        }
+        printf("\n");
+    }
+
+    printf("main.cpp:main():set idle mode!\n");
+    si4432.setIdleMode();
 
     while(true);
 

@@ -33,7 +33,7 @@ void Unit::loadCurrentMeters()
     if (false == waitingLine.empty())
     {
         list<int>::size_type sz = waitingLine.size();
-        for (int i = 0; (i < 4) && (i < sz); i++)
+        for (int i = 0; (i < 4) && (i < (int)sz); i++)
         {
             int tmp;
             tmp = waitingLine.front();

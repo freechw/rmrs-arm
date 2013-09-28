@@ -11,7 +11,7 @@
 static unsigned char mode;
 static unsigned char bits = 16;
 static unsigned int speed = 5000000;
-static unsigned short delay;
+//static unsigned short delay;
 static int spiFd;
 static int spiInterruptFd;
 
@@ -115,6 +115,15 @@ void c_burstWrite(unsigned char addr, unsigned char buf[], unsigned char length)
     tx[0] = (addr | 0x80);
     memcpy(&tx[1], buf, length);
 
+//    /***********DEBUG*************/
+//    printf("c_spi.c:c_burstWrite():burst data is");
+//    for (int i = 0; i < length; i++)
+//    {
+//        printf(" 0x%.2x ", tx[1+i]);
+//    }
+//    printf("\n");
+//    /*****************************/
+
     unsigned char rx[1 + length];
 
     struct spi_ioc_transfer tr = {
@@ -155,6 +164,8 @@ void c_burstRead(unsigned char addr, unsigned char buf[], unsigned char length)
     {
         printf("c_spi.c:c_burstRead():read burst message fail!\n");
     }
+
+    memcpy(buf, &rx[1], length);
 
 }
 

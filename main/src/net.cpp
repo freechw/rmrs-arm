@@ -33,7 +33,6 @@ void Net::sendMeterData(short unitId, list<unsigned char *> data)
     list<unsigned char *>::size_type dataLength = data.size();
     unitData.push_back((unsigned char)dataLength);
     //push each byte of each meter data
-    list<unsigned char *>::iterator iter;data.begin();
     for (list<unsigned char *>::iterator iter = data.begin(); iter != data.end(); iter++)
     {
         for (int j = 0; j < METER_DATA_LENGTH; j++)
@@ -102,7 +101,7 @@ vector<unsigned char> Net::package(vector<unsigned char> data)
     //push the identifier to rtnData
     unsigned char identifierBytes[4];
     memcpy(identifierBytes, (unsigned char *)&identifier, sizeof(identifierBytes));
-    for (int i = 0; i < sizeof(identifierBytes); i++)
+    for (int i = 0; i < (int)sizeof(identifierBytes); i++)
     {
         rtnData.push_back(identifierBytes[i]);
     }
@@ -170,6 +169,8 @@ void* listenerProcess(void * args)
 {
     Net * net = (Net *)args;
     net->listener();
+
+    return NULL;
 }
 
 void Net::listener()
@@ -282,7 +283,7 @@ void Net::unPackage(vector<unsigned char> data)
                 printf("net.cpp:unPackage():meter num is %d\n", meterNum);
                 vector<short> unitIds;
                 vector<int> meterIds;
-                for (int i = 0; i < meterNum; i++)
+                for (int i = 0; i < (int)meterNum; i++)
                 {
                     unsigned int tmpMeterBase = 2 + (i * 6);
                     unitIds.push_back(*(short *)(&data[tmpMeterBase]));
@@ -307,7 +308,7 @@ void Net::setUnitMap(map<short, Unit *> * pUnitMap, sem_t * mapLock)
 void Net::insertMeter(vector<short> unitIds, vector<int> meterIds)
 {
     sem_wait(_mapLock);
-    printf("net.cpp:insertMeter():meter num is %d\n", unitIds.size());
+    printf("net.cpp:insertMeter():meter num is %d\n", (int)unitIds.size());
     for (int i = 0; i < (int)unitIds.size(); i++)
     {
         if ( _pUnitMap->end() != _pUnitMap->find(unitIds[i]))
