@@ -132,6 +132,7 @@ bool Unit::getCurrentLineFull()
 void Unit::setCurrentLineCleared()
 {
     currentLineCleared = true;
+    _clearNum = 0;
     loadCurrentMeters();
 }
 bool Unit::getCurrentLineCleared()
@@ -158,10 +159,19 @@ Unit::Unit()
     unitId = 0;
     currentLineFull = false;
     currentLineCleared = false;
+    _clearNum = 0;
 
     waitingLine.clear();
     currentLine.clear();
     readyLine.clear();
 }
 
+unsigned char Unit::getClearNum()
+{
+    return _clearNum;
+}
 
+void Unit::plusClearNum()
+{
+    _clearNum++;
+}

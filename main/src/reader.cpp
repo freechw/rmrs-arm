@@ -44,37 +44,47 @@ void Reader::DoRead(Unit * pUnit)
         if (true == _pSi4432->isReceived())
         {
             vector<unsigned char> rdBackData = _pSi4432->fifoRead();
-            if (rdBackData[4] == rdBackData[5])
+            if (isCurrent(rdBackData, meterIds))
             {
-                int tmpMeterNumber = pUnit->getCurrentMeter();
-                sendUploadCommand(pUnit->getUnitId(), tmpMeterNumber);
-                if (true == _pSi4432->isReceived())
+                if (rdBackData[4] == rdBackData[5])//Collect ready to upload
                 {
-                    vector<unsigned char> uploadData = _pSi4432->fifoRead();
+                    int tmpMeterNumber = pUnit->getCurrentMeter();
+                    sendUploadCommand(pUnit->getUnitId(), tmpMeterNumber);
+                    if (true == _pSi4432->isReceived())
+                    {
+                        vector<unsigned char> uploadData = _pSi4432->fifoRead();
 
-                    unsigned char * pData = new unsigned char[38];//TO do
-                    memcpy(pData, &uploadData[3], 38);
-                    printf("reader.cpp:DoRead():add ready meter data!\n");
-                    pUnit->addReadyMeterData(pData);
-                    int tmpMeterId = meterIds[tmpMeterNumber];
-                    if (tmpMeterId == meterIds.back())
+                        unsigned char * pData = new unsigned char[38];//TO do
+                        memcpy(pData, &uploadData[3], 38);
+                        printf("reader.cpp:DoRead():add ready meter data!\n");
+                        pUnit->addReadyMeterData(pData);
+                        int tmpMeterId = meterIds[tmpMeterNumber];
+                        if (tmpMeterId == meterIds.back())
+                        {
+                            pUnit->setCurrentLineFull();
+                        }
+                    }
+                    else
                     {
-                        pUnit->setCurrentLineFull();
+                        //add meter data to unit with last byte is 0xa1(means unit lost)
+                        unsigned char * pData = new unsigned char[38];
+                        pData[37] = 0xa1;
+                        int tmpMeterId = meterIds[tmpMeterNumber];
+                        *(int *)(&pData[0]) = tmpMeterId;
+                        pUnit->addReadyMeterData(pData);
+                        if (tmpMeterId == meterIds.back())
+                        {
+                            pUnit->setCurrentLineFull();
+                            pUnit->setCurrentLineCleared();
+                        }
                     }
                 }
-                else
-                {
-                    //add meter data to unit with last byte is 0xa1(means unit lost)
-                    unsigned char * pData = new unsigned char[38];
-                    pData[37] = 0xa1;
-                    int tmpMeterId = meterIds[tmpMeterNumber];
-                    *(int *)(&pData[0]) = tmpMeterId;
-                    pUnit->addReadyMeterData(pData);
-                    if (tmpMeterId == meterIds.back())
-                    {
-                        pUnit->setCurrentLineFull();
-                    }
-                }
+            }
+            else
+            {
+                //clear last meter data
+                sendClearCommand(pUnit->getUnitId());
+                _pSi4432->isReceived();
             }
         }
         else
@@ -88,6 +98,7 @@ void Reader::DoRead(Unit * pUnit)
             if (tmpMeterId == meterIds.back())
             {
                 pUnit->setCurrentLineFull();
+                pUnit->setCurrentLineCleared();
             }
         }
     }
@@ -107,6 +118,15 @@ void Reader::DoRead(Unit * pUnit)
             else
             {
                 //tmp lost unit
+                if (2 < pUnit->getClearNum())
+                {
+                    pUnit->setCurrentLineCleared();
+                }
+                else
+                {
+                    pUnit->plusClearNum();
+                    printf("reader.cpp:DoRead():clear num is %d\n", pUnit->getClearNum());
+                }
             }
         }
     }
@@ -223,6 +243,25 @@ void Reader::sendClearCommand(short unitId)
 void Reader::setSi4432(Si4432 * pSi4432)
 {
     _pSi4432 = pSi4432;
+}
+
+//check the rd command back buf is suit for current meterids
+bool Reader::isCurrent(vector<unsigned char> rdBackData, vector<int> currentMeters)
+{
+    if (rdBackData.size() != (8 + 4 * currentMeters.size()))
+    {
+        return false;
+    }
+
+    for (int i = 0; i < (int)currentMeters.size(); i++)
+    {
+        if (*(int *)(&rdBackData[7 + i * 4]) != currentMeters[i])
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 

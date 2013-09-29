@@ -21,6 +21,7 @@ class Reader
         void sendReadCommand(short unitId, std::vector<int> meterIds);
         void sendUploadCommand(short unitId, int meterId);
         void sendClearCommand(short unitId);
+        bool isCurrent(std::vector<unsigned char> rdBackData, std::vector<int> currentMeters);
         std::map<short, Unit *> * _pUnitMap;
         sem_t * _mapLock;
         friend void* readerProcess(void * args);

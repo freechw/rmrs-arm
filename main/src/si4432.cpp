@@ -225,7 +225,7 @@ bool Si4432::isReceived()
         {
             break;
         }
-        if (400 < timeCount)
+        if (150 < timeCount)
         {
             break;
         }

@@ -25,6 +25,8 @@ class Unit
         bool getCurrentLineCleared();
         void setUnitId(short id);
         short getUnitId();
+        void plusClearNum();
+        unsigned char getClearNum();
 
         Unit();
     private:
@@ -41,6 +43,7 @@ class Unit
         bool currentLineFull;
         bool currentLineCleared;
         short unitId;
+        unsigned char _clearNum;
 
         sem_t readyLineLock;
         sem_t waitingLineLock;
