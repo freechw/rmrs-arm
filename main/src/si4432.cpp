@@ -1,5 +1,6 @@
 #include "si4432.h"
 #include <vector>
+#include <unistd.h>
 
 #include <stdio.h>
 
@@ -25,7 +26,29 @@ void Si4432::reset()
     _spi->chipWrite(0x07, 0x80);
     printf("si4432.cpp:reset():reset chip.......\n");
 
-    while(false == _spi->getInterrupt());
+    unsigned char timeCount = 0;
+    while(true)
+    {
+        if ( true == _spi->getInterrupt())
+        {
+            break;
+        }
+        if (100 < timeCount)
+        {
+            break;
+        }
+
+        timeCount++;
+
+        usleep(20000);
+    }
+
+    if (false == _spi->getInterrupt())
+    {
+        printf("si4432.cpp:reset():reset chip fail!\n");
+        init();
+        setIdleMode();
+    }
 
     _spi->chipRead(0x03);
     _spi->chipRead(0x04);
@@ -139,7 +162,31 @@ void Si4432::fifoSend(vector<unsigned char> data)
     setTxMode();
     printf("si4432.cpp:fifoSend():sending......\n");
 
-    while(false == _spi->getInterrupt());
+    unsigned char timeCount = 0;
+    while(true)
+    {
+        if ( true == _spi->getInterrupt())
+        {
+            break;
+        }
+        if (100 < timeCount)
+        {
+            break;
+        }
+
+        timeCount++;
+
+        usleep(20000);
+    }
+
+    if (false == _spi->getInterrupt())
+    {
+        printf("si4432.cpp:fifoSend():send fail!\n");
+        //clear tx fifo
+        _spi->chipWrite(0x08, 0x01);
+        _spi->chipWrite(0x08, 0x00);
+    }
+
 
     //enable package recv event and crc error event interrupt
     _spi->chipWrite(0x05, 0x03);
@@ -170,7 +217,24 @@ vector<unsigned char> Si4432::fifoRead()
 bool Si4432::isReceived()
 {
     bool status = false;
-    while(false == _spi->getInterrupt()/* && (false == timer) false */);
+    //wait for interrupt or wait enough time
+    unsigned short timeCount = 0;
+    while(true)
+    {
+        if ( true == _spi->getInterrupt())
+        {
+            break;
+        }
+        if (400 < timeCount)
+        {
+            break;
+        }
+
+        timeCount++;
+
+        usleep(20000);
+    }
+
 
     if ( true == _spi->getInterrupt())
     {

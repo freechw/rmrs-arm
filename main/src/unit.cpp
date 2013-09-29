@@ -58,7 +58,7 @@ vector<int> Unit::getCurrentMeterIds()
 
 int Unit::getCurrentMeter()
 {
-    return currentLine[currentMeterNumber];
+    return (int)currentMeterNumber;
 }
 
 void Unit::addReadyMeterData(unsigned char * dataBuf)

@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include "unit.h"
+#include "si4432.h"
 
 #include <stdio.h>
 
@@ -14,6 +15,7 @@ class Reader
 {
     public:
         void setUnitMap(std::map<short, Unit * > * pUnitMap, sem_t * mapLock);
+        void setSi4432(Si4432 * pSi4432);
         void start();
     private:
         void sendReadCommand(short unitId, std::vector<int> meterIds);
@@ -25,6 +27,7 @@ class Reader
         void readCycle();
         void DoRead(Unit * pUnit);
         pthread_t _pthReader;
+        Si4432 * _pSi4432;
 };
 
 

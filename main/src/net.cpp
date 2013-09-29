@@ -26,6 +26,8 @@ void* listenerProcess(void * agrs);
 void Net::sendMeterData(short unitId, list<unsigned char *> data)
 {
     vector<unsigned char> unitData;
+    //push the upload command
+    unitData.push_back(0x2D);
     //push the unitId
     unitData.push_back(unitId >> 8);
     unitData.push_back(unitId & 0xff);
@@ -273,7 +275,9 @@ void Net::unPackage(vector<unsigned char> data)
     if (false == data.empty())
     {
         //ack this command
-        netSend(package(data));
+        vector<unsigned char>ackData(data);
+        ackData[0] = ackData[0] -3;
+        netSend(package(ackData));
 
         if ((unsigned char)data.size() == ((data[1] * 6) + 2))
         {
