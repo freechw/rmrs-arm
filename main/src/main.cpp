@@ -8,6 +8,8 @@
 #include <list>
 #include <string>
 #include <map>
+#include <cmath>
+#include <cstdlib>
 
 
 using std::list;
@@ -15,8 +17,34 @@ using std::string;
 using std::vector;
 using std::map;
 
-int main()
+int main(int argc, char* argv[])
 {
+    unsigned int identifier = 0;
+    string serverIp;
+    int serverPort;
+    if (argc != 4)
+    {
+        printf("error args!\n");
+        identifier = 0x11223344;
+        serverIp = "192.168.1.158";
+        serverPort = 8000;
+    }
+    else
+    {
+        char * buf = argv[1];
+        for (int i = 0; i < 8; i++)
+        {
+            identifier += (((unsigned int)buf[i] -0x30) * (unsigned int)pow(16, (7-i)));
+        }
+
+        serverIp = argv[2];
+        serverPort = atoi(argv[3]);
+    }
+
+
+    printf("identifier is 0x%.2x\n", identifier);
+    printf("server ip is %s\n", serverIp.c_str());
+    printf("server port is %d\n", serverPort);
 
     map<short, Unit *> mainUnitMap;
 
@@ -26,8 +54,8 @@ int main()
 
 
     Net netCenter;
-    netCenter.setIdentifier(0x11223344);
-    netCenter.setIpPort("192.168.1.158", 8000);
+    netCenter.setIdentifier(identifier);
+    netCenter.setIpPort(serverIp, serverPort);
     netCenter.setUnitMap(&mainUnitMap, &mapLock);
     netCenter.start();
 
