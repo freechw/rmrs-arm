@@ -1,5 +1,6 @@
 #include "reader.h"
 #include <string.h>
+#include <unistd.h>
 
 using std::vector;
 using std::list;
@@ -40,11 +41,28 @@ void Reader::DoRead(Unit * pUnit)
         {
             return;
         }
+        /*************DEBUG**************/
+        printf("reader.cpp:DoRead():currentMeterLins length is %d\n", (int)meterIds.size());
+        /********************************/
+        if (_lastUnitId == pUnit->getUnitId())
+        {
+            sleep(2);
+        }
+        _lastUnitId = pUnit->getUnitId();
         sendReadCommand(pUnit->getUnitId(), meterIds);
         if (true == _pSi4432->isReceived())
         {
             vector<unsigned char> rdBackData = _pSi4432->fifoRead();
-            if (isCurrent(rdBackData, meterIds))
+            /*****************DEBUG*********************/
+            printf("reader.cpp:DoRead():rdBackData is\n");
+            for (int i = 0; i < (int)rdBackData.size(); i++)
+            {
+                printf(" 0x%.2x,", rdBackData[i]);
+            }
+            printf("\n");
+            /*******************************************/
+
+            if (true == isCurrent(rdBackData, meterIds))
             {
                 if (rdBackData[4] == rdBackData[5])//Collect ready to upload
                 {
@@ -58,8 +76,7 @@ void Reader::DoRead(Unit * pUnit)
                         memcpy(pData, &uploadData[3], 38);
                         printf("reader.cpp:DoRead():add ready meter data!\n");
                         pUnit->addReadyMeterData(pData);
-                        int tmpMeterId = meterIds[tmpMeterNumber];
-                        if (tmpMeterId == meterIds.back())
+                        if ((int)(meterIds.size() - 1) == tmpMeterNumber)
                         {
                             pUnit->setCurrentLineFull();
                         }
@@ -72,7 +89,7 @@ void Reader::DoRead(Unit * pUnit)
                         int tmpMeterId = meterIds[tmpMeterNumber];
                         *(int *)(&pData[0]) = tmpMeterId;
                         pUnit->addReadyMeterData(pData);
-                        if (tmpMeterId == meterIds.back())
+                        if ((int)(meterIds.size() - 1) == tmpMeterNumber)
                         {
                             pUnit->setCurrentLineFull();
                             pUnit->setCurrentLineCleared();
@@ -95,7 +112,7 @@ void Reader::DoRead(Unit * pUnit)
             pData[37] = 0xa1;
             *(int *)(&pData[0]) = tmpMeterId;
             pUnit->addReadyMeterData(pData);
-            if (tmpMeterId == meterIds.back())
+            if ((int)(meterIds.size() - 1) == tmpMeterNumber)
             {
                 pUnit->setCurrentLineFull();
                 pUnit->setCurrentLineCleared();
@@ -154,13 +171,13 @@ void* readerProcess(void * args)
 void Reader::sendReadCommand(short unitId, vector<int> meterIds)
 {
     printf("reader.cpp:sendReadCommand():send rd command!\n");
-    printf("unit id is: 0x%.2x\n", unitId);
-    printf("meter id list:");
-    for (int i = 0; i < (int)meterIds.size(); i++)
-    {
-        printf(" 0x%.2x,", meterIds[i]);
-    }
-    printf("\n");
+    //printf("unit id is: 0x%.2x\n", unitId);
+    //printf("meter id list:");
+    //for (int i = 0; i < (int)meterIds.size(); i++)
+    //{
+    //    printf(" 0x%.2x,", meterIds[i]);
+    //}
+    //printf("\n");
 
     vector<unsigned char> readCommandBuf(7+ (4 * meterIds.size()));
     //add unitId
@@ -248,18 +265,43 @@ void Reader::setSi4432(Si4432 * pSi4432)
 //check the rd command back buf is suit for current meterids
 bool Reader::isCurrent(vector<unsigned char> rdBackData, vector<int> currentMeters)
 {
-    if (rdBackData.size() != (8 + 4 * currentMeters.size()))
+    //if ((int)rdBackData.size() != (8 + 4 * 4))
+    //{
+    //    /***********DEUBG************/
+    //    printf("reader.cpp:isCurrent():wrong length! length is %d\n", (int)rdBackData.size());
+    //    /****************************/
+    //    return false;
+    //}
+    /*****************DEBUG*********************/
+    printf("reader.cpp:isCurrent():rdBackData is\n");
+    for (int i = 0; i < (int)rdBackData.size(); i++)
     {
-        return false;
+        printf(" 0x%.2x,", rdBackData[i]);
     }
+    printf("\n");
+    printf("reader.cpp:isCurrent();currentMeters is\n");
+    for (int i = 0; i < (int)currentMeters.size(); i++)
+    {
+        printf(" 0x%.2x,", currentMeters[i]);
+    }
+    /******************************************/
 
     for (int i = 0; i < (int)currentMeters.size(); i++)
     {
         if (*(int *)(&rdBackData[7 + i * 4]) != currentMeters[i])
         {
+            /**************DEBUG***************/
+            printf("reader.cpp:isCurrent():not current!\n");
+            printf("reader.cpp:isCurrent():rdId is 0x%.2x, current id is 0x%.2x\n",
+                    *(int *)(&rdBackData[7 + i * 4]), currentMeters[i]);
+            /**********************************/
             return false;
         }
     }
+
+    /************DEUBG*************/
+    printf("reader.cpp:isCurrent():current check ok!\n");
+    /******************************/
 
     return true;
 }

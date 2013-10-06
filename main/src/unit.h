@@ -8,6 +8,7 @@
 #include <semaphore.h>
 //#include "net.h"
 class Net;
+#include "record.h"
 
 class Unit
 {
@@ -17,7 +18,8 @@ class Unit
         std::vector<int> getCurrentMeterIds();
         int getCurrentMeter();
         void addReadyMeterData(unsigned char dataBuf[]);
-        void setNetObject(Net * net);//TO do, change int type to my own tcp class
+        void setNetObject(Net * net);
+        void setRecordObject(Record * record);
         void startSender();
         void setCurrentLineFull();
         bool getCurrentLineFull();
@@ -35,6 +37,7 @@ class Unit
         std::vector<int> currentLine;
         std::list<unsigned char *> readyLine;
         Net * _net;
+        Record * _record;
         void loadCurrentMeters();
 
         pthread_t _thdSender;

@@ -3,6 +3,7 @@
 #include "reader.h"
 #include "spi.h"
 #include "si4432.h"
+#include "record.h"
 #include <stdio.h>
 #include <vector>
 #include <list>
@@ -51,12 +52,16 @@ int main(int argc, char* argv[])
     sem_t mapLock;
     sem_init(&mapLock, 0, 1);
 
+    Record record;
+    record.setFile("/tmp/metersData");
+
 
 
     Net netCenter;
     netCenter.setIdentifier(identifier);
     netCenter.setIpPort(serverIp, serverPort);
     netCenter.setUnitMap(&mainUnitMap, &mapLock);
+    netCenter.setRecordPointer(&record);
     netCenter.start();
 
     Spi spi;
@@ -74,8 +79,9 @@ int main(int argc, char* argv[])
     mainReader.setSi4432(&si4432);
     mainReader.start();
 
-
     while(true);
+
+    record.closeFile();
 
     return 0;
 }

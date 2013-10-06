@@ -5,8 +5,8 @@ LDFLAGS= -lpthread -lstdc++
 
 all: test
 
-test: main.o net.o unit.o reader.o si4432.o spi.o c_spi.o
-	$(CPP) $(LDFLAGS) -o test main.o net.o unit.o reader.o si4432.o spi.o c_spi.o
+test: main.o net.o unit.o reader.o si4432.o spi.o c_spi.o record.o
+	$(CPP) $(LDFLAGS) -o test main.o net.o unit.o reader.o si4432.o spi.o c_spi.o record.o
 main.o:main.cpp
 	$(CPP) $(CFLAGS) main.cpp
 net.o:net.cpp
@@ -21,6 +21,8 @@ spi.o:spi.cpp
 	$(CPP) $(CFLAGS) spi.cpp
 c_spi.o:c_spi.c
 	$(CC) $(CFLAGS) c_spi.c
+record.o:record.cpp
+	$(CPP) $(CFLAGS) record.cpp
 
 clean:
 	rm -rf *.o test

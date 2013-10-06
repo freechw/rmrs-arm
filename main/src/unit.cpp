@@ -75,6 +75,11 @@ void Unit::setNetObject(Net * net)
     _net = net;
 }
 
+void Unit::setRecordObject(Record * record)
+{
+    _record = record;
+}
+
 void Unit::startSender()
 {
     int status;
@@ -101,6 +106,7 @@ void Unit::meterDataUploadProcess()
             sem_post(&readyLineLock);
             printf("unit.cpp:meterDataUploadProcess():Unit%d, send Message\n", unitId);
             _net->sendMeterData(unitId, meterData);
+            _record->recordMeterData(meterData);
         }
         else
         {

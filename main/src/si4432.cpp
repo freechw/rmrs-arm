@@ -141,7 +141,7 @@ void Si4432::fifoSend(vector<unsigned char> data)
 {
     setIdleMode();
 
-    printf("si4432.cpp:fifoSend():prepare to send!\n");
+    //printf("si4432.cpp:fifoSend():prepare to send!\n");
 
 //    /************DEBUG*****************/
 //    printf("si4432.cpp:send data is:");
@@ -152,6 +152,11 @@ void Si4432::fifoSend(vector<unsigned char> data)
 //    printf("\n");
 //    /*********************************/
 
+    //clear tx fifo
+    _spi->chipWrite(0x08, 0x01);
+    _spi->chipWrite(0x08, 0x00);
+
+    //burst data to fifo
     _spi->chipWrite(0x3e, (unsigned char)data.size());
     _spi->burstWrite(0x7f, data);
 
@@ -160,7 +165,7 @@ void Si4432::fifoSend(vector<unsigned char> data)
     _spi->chipWrite(0x06, 0x00);
 
     setTxMode();
-    printf("si4432.cpp:fifoSend():sending......\n");
+    //printf("si4432.cpp:fifoSend():sending......\n");
 
     unsigned char timeCount = 0;
     while(true)
@@ -196,7 +201,7 @@ void Si4432::fifoSend(vector<unsigned char> data)
     _spi->chipRead(0x03);
     _spi->chipRead(0x04);
 
-    printf("si4432.cpp:fifoSend():send end!\n");
+    //printf("si4432.cpp:fifoSend():send end!\n");
 }
 
 vector<unsigned char> Si4432::fifoRead()
@@ -205,11 +210,16 @@ vector<unsigned char> Si4432::fifoRead()
     length = _spi->chipRead(0x4b);
 
     /*********DEBUG*************/
-    printf("si4432.cpp:fifoRead():fifo data length is %d\n", length);
+    //printf("si4432.cpp:fifoRead():fifo data length is %d\n", length);
     /***************************/
 
     vector<unsigned char> data;
     data = _spi->burstRead(0x7f, length);
+
+    //clear rx fifo
+    _spi->chipWrite(0x08, 0x02);
+    _spi->chipWrite(0x08, 0x00);
+
 
     return data;
 }

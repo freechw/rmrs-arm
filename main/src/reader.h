@@ -29,6 +29,7 @@ class Reader
         void DoRead(Unit * pUnit);
         pthread_t _pthReader;
         Si4432 * _pSi4432;
+        short _lastUnitId;
 };
 
 
