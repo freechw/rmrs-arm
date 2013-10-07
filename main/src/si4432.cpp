@@ -46,7 +46,7 @@ void Si4432::reset()
     if (false == _spi->getInterrupt())
     {
         printf("si4432.cpp:reset():reset chip fail!\n");
-        init();
+        init(0x2dd4);
         setIdleMode();
     }
 
@@ -55,7 +55,7 @@ void Si4432::reset()
 
 }
 
-void Si4432::init()
+void Si4432::init(short syncword)
 {
     _spi->chipWrite(0x75, 0x53);
     _spi->chipWrite(0x76, 0x4B);
@@ -88,8 +88,9 @@ void Si4432::init()
 
     _spi->chipWrite(0x33, 0x02);
 
-    _spi->chipWrite(0x36, 0x2d);
-    _spi->chipWrite(0x37, 0xd4);
+    //sync word
+    _spi->chipWrite(0x36, (syncword >> 8));
+    _spi->chipWrite(0x37, (syncword & 0xff));
 
     _spi->chipWrite(0x30, 0x8d);
     _spi->chipWrite(0x32, 0x00);

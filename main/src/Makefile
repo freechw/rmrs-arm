@@ -26,3 +26,5 @@ record.o:record.cpp
 
 clean:
 	rm -rf *.o test
+trans:
+	scp ./test arm:/App/newtest

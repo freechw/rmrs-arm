@@ -9,7 +9,7 @@ class Si4432
     public:
         void setSpi(Spi * spi);
         void reset();
-        void init();
+        void init(short syncword);
         void setTxMode();
         void setRxMode();
         void setIdleMode();

@@ -96,6 +96,8 @@ void Net::reConnectServer()
 {
     sem_wait(&sendLock);
     shutdown(socketFd, SHUT_RDWR);
+
+    printf("net.cpp:reConnectServer():try to reconnect server!\n");
     struct sockaddr_in pin;
     struct hostent *nlp_host;
 
@@ -116,11 +118,13 @@ void Net::reConnectServer()
 
     socketFd = socket(AF_INET, SOCK_STREAM, 0);
 
+    printf("net.cpp:reConnectServer():try connect()\n");
     while (connect(socketFd, (struct sockaddr *)&pin, sizeof(pin)) != 0)
     {
         printf("net.cpp:reConnectServer():Reconnect Error!\n");
     }
 
+    printf("net.cpp:reConnectServer():try hand shack\n");
     while (sizeof(message) != send(socketFd, message, sizeof(message), 0))
     {
         printf("HandShack Error!\n");
@@ -272,7 +276,7 @@ void Net::listener()
                     printf("connect lost!\n");
                     _error_code = 0;
                     connected = false;
-                    //break;
+                    reConnectServer();
                 }
                 else if ((status + recvNum) < 13)
                 {

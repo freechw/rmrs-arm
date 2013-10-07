@@ -23,29 +23,28 @@ int main(int argc, char* argv[])
     unsigned int identifier = 0;
     string serverIp;
     int serverPort;
-    if (argc != 4)
+    short syncword;
+    if (argc != 5)
     {
         printf("error args!\n");
         identifier = 0x11223344;
         serverIp = "192.168.1.158";
         serverPort = 8000;
+        syncword = 0x2dd4;
     }
     else
     {
-        char * buf = argv[1];
-        for (int i = 0; i < 8; i++)
-        {
-            identifier += (((unsigned int)buf[i] -0x30) * (unsigned int)pow(16, (7-i)));
-        }
-
+        identifier = (unsigned int)strtol(argv[1], NULL, 16);
         serverIp = argv[2];
         serverPort = atoi(argv[3]);
+        syncword = (short)strtol(argv[4], NULL, 16);
     }
 
 
     printf("identifier is 0x%.2x\n", identifier);
     printf("server ip is %s\n", serverIp.c_str());
     printf("server port is %d\n", serverPort);
+    printf("syncword is0x%.2x\n", syncword);
 
     map<short, Unit *> mainUnitMap;
 
@@ -71,7 +70,7 @@ int main(int argc, char* argv[])
     Si4432 si4432;
     si4432.setSpi(&spi);
     si4432.reset();
-    si4432.init();
+    si4432.init(syncword);
     si4432.setIdleMode();
 
     Reader mainReader;
