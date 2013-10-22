@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
     sem_init(&mapLock, 0, 1);
 
     Record record;
-    record.setFile("/tmp/metersData");
+    record.setFile("/App/metersData");
 
 
 

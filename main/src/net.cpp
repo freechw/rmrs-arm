@@ -1,3 +1,4 @@
+
 #include "net.h"
 #include <vector>
 #include <list>
@@ -29,12 +30,13 @@ void Net::sendMeterData(short unitId, list<unsigned char *> data)
     vector<unsigned char> unitData;
     //push the upload command
     unitData.push_back(0x2D);
-    //push the unitId
-    unitData.push_back(unitId >> 8);
-    unitData.push_back(unitId & 0xff);
     //push meter number
     list<unsigned char *>::size_type dataLength = data.size();
     unitData.push_back((unsigned char)dataLength);
+
+    //push the unitId
+    unitData.push_back(unitId & 0xff);
+    unitData.push_back(unitId >> 8);
     //push each byte of each meter data
     for (list<unsigned char *>::iterator iter = data.begin(); iter != data.end(); iter++)
     {
@@ -67,6 +69,7 @@ void Net::connectServer()
     while ((nlp_host = gethostbyname(_host.c_str())) == 0)
     {
         printf("Resolve Error!\n");
+        sleep(5);
     }
 
     bzero(&pin, sizeof(pin));
@@ -80,9 +83,10 @@ void Net::connectServer()
     while (connect(socketFd, (struct sockaddr *)&pin, sizeof(pin)) == -1)
     {
         printf("Connect Error!\n");
+        sleep(30);
     }
 
-    while (sizeof(message) != send(socketFd, message, sizeof(message), 0))
+    if (sizeof(message) != send(socketFd, message, sizeof(message), 0))
     {
         printf("HandShack Error!\n");
     }
@@ -97,6 +101,9 @@ void Net::reConnectServer()
     sem_wait(&sendLock);
     shutdown(socketFd, SHUT_RDWR);
 
+    //wait 30s avoid make too many network data
+    sleep(30);
+
     printf("net.cpp:reConnectServer():try to reconnect server!\n");
     struct sockaddr_in pin;
     struct hostent *nlp_host;
@@ -108,6 +115,7 @@ void Net::reConnectServer()
     while ((nlp_host = gethostbyname(_host.c_str())) == 0)
     {
         printf("Resolve Error!\n");
+        sleep(5);
     }
 
     bzero(&pin, sizeof(pin));
@@ -122,10 +130,11 @@ void Net::reConnectServer()
     while (connect(socketFd, (struct sockaddr *)&pin, sizeof(pin)) != 0)
     {
         printf("net.cpp:reConnectServer():Reconnect Error!\n");
+        sleep(30);
     }
 
     printf("net.cpp:reConnectServer():try hand shack\n");
-    while (sizeof(message) != send(socketFd, message, sizeof(message), 0))
+    if (sizeof(message) != send(socketFd, message, sizeof(message), 0))
     {
         printf("HandShack Error!\n");
     }
@@ -531,6 +540,5 @@ void* heartbeatProcess(void * args)
 
     return NULL;
 }
-
 
 
