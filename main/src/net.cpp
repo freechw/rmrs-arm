@@ -501,6 +501,10 @@ void Net::heart()
 {
     while (true)
     {
+      /***********DEBUG************/
+      printf("net.cpp:heart():try send heartBeat Package\n");
+      /****************************/
+
         vector<unsigned char> heartbeatPackage;
 
         //push the identifier to heartbeatPackage
@@ -528,8 +532,12 @@ void Net::heart()
 
         netSend(heartbeatPackage);
 
+        /*******DEBUG************/
+        printf("net.cpp:heart():send end\n");
+        /************************/
+
         //wait for some times
-        sleep(30);
+        sleep(10);
     }
 }
 
