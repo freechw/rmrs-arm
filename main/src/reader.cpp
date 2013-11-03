@@ -20,7 +20,9 @@ void Reader::readCycle()
     while(true)
     {
         tmpUnitMap.clear();
+        //printf("reader.cpp:readCycle():sem_wait!\n");
         sem_wait(_mapLock);
+        //printf("reader.cpp:readCycle():get sem!\n");
         tmpUnitMap.insert(_pUnitMap->begin(), _pUnitMap->end());
         sem_post(_mapLock);
         for (map<short, Unit *>::const_iterator iter = tmpUnitMap.begin();

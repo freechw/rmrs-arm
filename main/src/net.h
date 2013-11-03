@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include "unit.h"
 #include "reader.h"
+#include "time.h"
 
 #define METER_DATA_LENGTH 38
 
@@ -32,6 +33,8 @@ class Net
     int identifier;
     int _port;
     sem_t sendLock;
+    sem_t heartTimesLock_;
+    int heartTimes_;
     std::string _host;
     std::map<short, Unit *> * _pUnitMap;
     Record * _pRecord;
@@ -52,6 +55,12 @@ class Net
     void insertMeterQuick(std::vector<short> unitIds, std::vector<int> meterIds);
     int _error_code;
     bool connected;
+    void ReadFromTcp(int length, unsigned char recvBuf[]);
+    void AnalyzeHeader(unsigned char headBuf[]);
+    void RecvDataPackage(int length);
+    void CheckHeartBeat();
+    int lastTime_;
+    int heartCount_;
 
 };
 

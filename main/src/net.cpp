@@ -3,6 +3,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <cstdlib>
 
 //for net
 #include <sys/socket.h>
@@ -11,6 +12,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
 
 #include <string.h>
 
@@ -80,10 +83,13 @@ void Net::connectServer()
 
     socketFd = socket(AF_INET, SOCK_STREAM, 0);
 
+
+
+
     while (connect(socketFd, (struct sockaddr *)&pin, sizeof(pin)) == -1)
     {
-        printf("Connect Error!\n");
-        sleep(30);
+      printf("net.cpp:connectServer():connect Error\n");
+      sleep(30);
     }
 
     if (sizeof(message) != send(socketFd, message, sizeof(message), 0))
@@ -91,6 +97,17 @@ void Net::connectServer()
         printf("HandShack Error!\n");
     }
 
+    int x;
+    x = fcntl(socketFd, F_GETFL, 0);
+    if (-1 == x)
+    {
+      printf("net.cpp:connectServer():get fcntl error\n");
+      x = 0;
+    }
+    if (-1 == fcntl(socketFd, F_SETFL, x | O_NONBLOCK))
+    {
+      printf("net.cpp:connectServer():set fcntl error\n");
+    }
     connected = true;
 
     sem_post(&sendLock);
@@ -98,8 +115,11 @@ void Net::connectServer()
 
 void Net::reConnectServer()
 {
+  printf("net.cpp:reConnectServer():sem_wait!\n");
     sem_wait(&sendLock);
     shutdown(socketFd, SHUT_RDWR);
+    close(socketFd);
+  printf("net.cpp:reConnectServer():wait for reConnect!\n");
 
     //wait 30s avoid make too many network data
     sleep(30);
@@ -126,18 +146,34 @@ void Net::reConnectServer()
 
     socketFd = socket(AF_INET, SOCK_STREAM, 0);
 
+
     printf("net.cpp:reConnectServer():try connect()\n");
-    while (connect(socketFd, (struct sockaddr *)&pin, sizeof(pin)) != 0)
+    while (connect(socketFd, (struct sockaddr *)&pin, sizeof(pin)) == -1)
     {
-        printf("net.cpp:reConnectServer():Reconnect Error!\n");
+      printf("net.cpp:reConnectServer():connect Error!\n");
         sleep(30);
     }
+
 
     printf("net.cpp:reConnectServer():try hand shack\n");
     if (sizeof(message) != send(socketFd, message, sizeof(message), 0))
     {
         printf("HandShack Error!\n");
     }
+    printf("net.cpp:reConnectServer():reConnected!\n");
+
+    int x;
+    x = fcntl(socketFd, F_GETFL, 0);
+    if (-1 == x)
+    {
+      printf("net.cpp:connectServer():get fcntl error\n");
+      x = 0;
+    }
+    if (-1 == fcntl(socketFd, F_SETFL, x | O_NONBLOCK))
+    {
+      printf("net.cpp:connectServer():set fcntl error\n");
+    }
+
 
     connected = true;
 
@@ -196,6 +232,8 @@ vector<unsigned char> Net::package(vector<unsigned char> data)
 void Net::start()
 {
     connectServer();
+
+
     int status;
     status = pthread_create(&_thdListener, NULL, listenerProcess, this);
     if (0 != status)
@@ -217,11 +255,27 @@ void Net::netSend(vector<unsigned char> data)
     if (false == data.empty())
     {
         int length = (int)data.size();
+        int sendLength = 0;
+        int tmpLength = 0;
         sem_wait(&sendLock);
-        if (length != write(socketFd, &data[0], length))
+        while ( length > sendLength)
         {
-            printf("net.cpp:netSend():Send Error!\n");
+          tmpLength = write(socketFd, &data[sendLength], length - sendLength);
+          if (0 < tmpLength)
+          {
+            sendLength += tmpLength;
+          }
+          else if ((EAGAIN == errno) || (EWOULDBLOCK == errno) || (EINTR == errno))
+          {
+            //
+          }
+          else
+          {
+            //send is wrong , just break to return function( if server can recv heart beat, socket will be reset)
+            break;
+          }
         }
+
         sem_post(&sendLock);
     }
 }
@@ -229,7 +283,14 @@ void Net::netSend(vector<unsigned char> data)
 Net::Net()
 {
     sem_init(&sendLock, 0, 1);
+    if (0 == sem_init(&heartTimesLock_, 0, 1))
+    {
+      printf("init heart lock ok!\n");
+    }
     identifier = 0;
+    heartTimes_ = 0;
+    lastTime_ = 0;
+    heartCount_ = 0;
     _port = 8000;
     _host = "127.0.0.1";
     connected = false;
@@ -258,127 +319,146 @@ void* listenerProcess(void * args)
 void Net::listener()
 {
     unsigned char headBuf[13];
+    time_t tmpTime;
+    time(&tmpTime);
+    lastTime_ = (int)tmpTime;
     /*************DEBUG************/
     printf("net.cpp:listener():listener start!\n");
     /******************************/
     while (true)
     {
-        if (true == connected)
-        {
-            bzero(&headBuf, sizeof(headBuf));
-            bool headerReceived = false;
-            int recvNum = 0;
-
-            //recv bytes until recved 13 bytes (header length is 13 bytes);
-            while(false == headerReceived)
-            {
-                int status = recv(socketFd, &headBuf[recvNum], (13-recvNum), MSG_WAITALL);
-                if (status < 0)
-                {
-                    printf("Recv Error\n");
-                    _error_code = -1;
-                    connected = false;
-                    //break;
-                }
-                else if (0 == status)
-                {
-                    printf("connect lost!\n");
-                    _error_code = 0;
-                    connected = false;
-                    reConnectServer();
-                }
-                else if ((status + recvNum) < 13)
-                {
-                    recvNum += status;
-                    continue;
-                }
-                else if (13 == (status + recvNum))
-                {
-                    recvNum +=status;
-                    headerReceived = true;
-                }
-                else
-                {
-                    printf("net.cpp:listener():status + recvNum is %d\n", (status + recvNum));
-                }
-            }
-
-            if (false == connected)
-            {
-                //break;
-            }
-
-            /******DEBUG**********/
-            //printf("net.cpp:listener():receved header!\n");
-            /*********************/
-
-            //check identifier and if pass, recv bytes until recived all data
-            int headerId = *(int *)(&headBuf[0]);
-            if (headerId == identifier)
-            {
-                if(0x00 == headBuf[8])
-                {
-                    int dataLength = *(int *)(&headBuf[9]);
-                    /***********DEBUG**************/
-                    //printf("net.cpp:listener():data length is %d\n", dataLength);
-                    /******************************/
-                    unsigned char dataBuf[dataLength];
-                    bzero(&dataBuf, sizeof(dataBuf));
-                    recvNum = 0;
-
-                    bool dataReceved = false;
-                    while(false == dataReceved)
-                    {
-                        int status = recv(socketFd, &dataBuf[recvNum], (dataLength-recvNum), MSG_WAITALL);
-                        if (status < 0)
-                        {
-                            printf("Recv Error\n");
-                            _error_code = status;
-                            connected = false;
-                            //break;
-                        }
-                        else if (0 == status)
-                        {
-                            printf("connect lost!\n");
-                            _error_code = status;
-                            connected = false;
-                            //break;
-                        }
-                        else if ((status + recvNum) < dataLength)
-                        {
-                            recvNum += status;
-                            continue;
-                        }
-                        else if (dataLength == (status + recvNum))
-                        {
-                            recvNum +=status;
-                            dataReceved = true;
-                        }
-                        else
-                        {
-                            printf("net.cpp:listener():status + recvNum is %d\n", (status + recvNum));
-                        }
-                    }
-                    vector<unsigned char> dataVector(dataBuf, dataBuf + (sizeof(dataBuf)/sizeof(unsigned char)));
-                    unPackage(dataVector);
-                }
-                else
-                {
-                    //is not data package
-                }
-            }
-            else
-            {
-                printf("net.cpp:listener():wrong identifier, recv is 0x%.2x,my is 0x%.2x\n",
-                        headerId, identifier);
-            }
-        }
-        else
-        {
-            connectServer();
-        }
+      try
+      {
+        bzero(&headBuf, 13);
+        this->ReadFromTcp(13, headBuf);
+        this->AnalyzeHeader(headBuf);
+      }
+      catch (unsigned int * errorCode)
+      {
+        unsigned int code = *errorCode;
+        printf("net.cpp;listener():Excpetion! %d\n", code);
+        this->reConnectServer();
+      }
     }
 }
+
+void Net::AnalyzeHeader(unsigned char headBuf[])
+{
+  int headerId = *(int *)(&headBuf[0]);
+  unsigned char tmpType = headBuf[8];
+  int tmpLength = *(int *)(&headBuf[9]);
+
+  //check identifier
+  if(headerId != this->identifier)
+  {
+    //TODO
+    unsigned int errorCode = 0x7d;
+    throw &errorCode;
+  }
+
+  switch (tmpType)
+  {
+    case 0x00:
+      sem_wait(&heartTimesLock_);
+      this->heartTimes_ = 0;
+      sem_post(&heartTimesLock_);
+      this->RecvDataPackage(tmpLength);
+      break;
+    case 0x80:
+      sem_wait(&heartTimesLock_);
+      this->heartTimes_ = 0;
+      sem_post(&heartTimesLock_);
+      break;
+    default:
+      //TODO
+      unsigned int errorCode = 1;
+      throw &errorCode;
+      break;
+  }
+}
+
+void Net::RecvDataPackage(int dataLength)
+{
+  unsigned char dataBuf[dataLength];
+  this->ReadFromTcp(dataLength, dataBuf);
+  vector<unsigned char> dataVector(dataBuf, dataBuf + (sizeof(dataBuf)/sizeof(unsigned char)));
+  this->unPackage(dataVector);
+}
+
+
+void Net::ReadFromTcp(int length, unsigned char recvBuf[])
+{
+  int recevidLength = 0;
+  int tmpLength = 0;
+
+  while (length > recevidLength)
+  {
+    tmpLength =  read(socketFd, &recvBuf[recevidLength], (length-recevidLength));
+    if (0 < tmpLength)
+    {
+      recevidLength += tmpLength;
+    }
+    else if (0 == tmpLength)
+    {
+      unsigned int errorCode = 0xc1;
+      throw &errorCode;
+    }
+    else if ((EINTR == errno) || (EWOULDBLOCK == errno) || (EAGAIN == errno))
+    {
+      //continue;
+    }
+    else
+    {
+      unsigned int errorCode = 0xc1;
+      throw &errorCode;
+    }
+
+//    printf("net.cpp:RFT():TO CHB()\n");
+
+    CheckHeartBeat();
+  }
+}
+
+void Net::CheckHeartBeat()
+{
+//  printf("net.cpp:CHB() Start!\n");
+  int tmpTimes;
+  int tmpCount;
+  time_t currentTime;
+  time(&currentTime);
+  int tmpSpan = lastTime_- currentTime;
+//  printf("lastTime is %d, currentTime is %d\n", lastTime_, (int)currentTime);
+  tmpSpan = abs(tmpSpan);
+//  printf("net.cpp:CHB():tmpSpan is %d\n", tmpSpan);
+  if ((int)3 < tmpSpan)
+  {
+    sem_wait(&heartTimesLock_);
+//    printf("net.cpp:CHB() Enter\n");
+    heartTimes_++;
+    tmpTimes = heartTimes_;
+    tmpCount = heartCount_;
+    sem_post(&heartTimesLock_);
+//    printf("net.cpp:CHB() Exit\n");
+
+    //wait for 100 * 3 seconds to recv heart beat package
+    if (100 < tmpTimes)
+    {
+      printf("net.cpp:CHB():heart beat lost! %d\n", tmpCount);
+      sem_wait(&heartTimesLock_);
+      heartTimes_ = 0;
+      sem_post(&heartTimesLock_);
+      unsigned int errorCode = 2;
+      throw &errorCode;
+    }
+
+    time(&currentTime);
+    lastTime_ = (int)currentTime;
+  }
+//  printf("net.cpp:CHB() End!\n");
+}
+
+
+
 
 void Net::unPackage(vector<unsigned char> data)
 {
@@ -447,18 +527,19 @@ void Net::setRecordPointer(Record * pRecord)
 
 void Net::insertMeter(vector<short> unitIds, vector<int> meterIds)
 {
+    printf("net.cp:insertMeter():Enter!\n");
     sem_wait(_mapLock);
-    //printf("net.cpp:insertMeter():meter num is %d\n", (int)unitIds.size());
+    printf("net.cpp:insertMeter():meter num is %d\n", (int)unitIds.size());
     for (int i = 0; i < (int)unitIds.size(); i++)
     {
         if ( _pUnitMap->end() != _pUnitMap->find(unitIds[i]))
         {
-            //printf("net.cpp:insertMeter():insert meter id to existed unit 0x%.2x\n", unitIds[i]);
+            printf("net.cpp:insertMeter():insert meter id to existed unit 0x%.2x\n", unitIds[i]);
             (*_pUnitMap)[unitIds[i]]->addMeterId(meterIds[i]);
         }
         else
         {
-            //printf("net.cpp:insertMeter():insert meter id to new unit 0x%.2x\n", unitIds[i]);
+            printf("net.cpp:insertMeter():insert meter id to new unit 0x%.2x\n", unitIds[i]);
             Unit * pTmpUnit = new Unit();
             pTmpUnit->setUnitId(unitIds[i]);
             pTmpUnit->setNetObject(this);
@@ -469,6 +550,7 @@ void Net::insertMeter(vector<short> unitIds, vector<int> meterIds)
         }
     }
     sem_post(_mapLock);
+    printf("net.cpp:insertMeter():Insert End\n");
 }
 
 void Net::insertMeterQuick(vector<short> unitIds, vector<int> meterIds)
@@ -536,7 +618,7 @@ void Net::heart()
         printf("net.cpp:heart():send end\n");
         /************************/
 
-        //wait for some times
+        //wait for some seconds
         sleep(10);
     }
 }

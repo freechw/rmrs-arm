@@ -1,6 +1,6 @@
 CPP=arm-linux-gcc
 CC=arm-linux-gcc
-CFLAGS= -c -Wall -Wshadow -std=gnu99
+CFLAGS=  -O0 -c -Wall -Wshadow -std=gnu99
 LDFLAGS= -lpthread -lstdc++
 
 all: test
