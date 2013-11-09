@@ -44,16 +44,24 @@ void Reader::DoRead(Unit * pUnit)
             return;
         }
         /*************DEBUG**************/
-        printf("reader.cpp:DoRead():currentMeterLins length is %d\n", (int)meterIds.size());
+        printf("reader.cpp:DoRead():currentUnit is 0x%.2x,currentMeterLins length is %d\n", pUnit->getUnitId(), (int)meterIds.size());
         /********************************/
         if (_lastUnitId == pUnit->getUnitId())
         {
             sleep(2);
         }
         _lastUnitId = pUnit->getUnitId();
+        //sleep if last time lost unit
+        if (0 < pUnit->lostCount)
+        {
+          unsigned int sec = 3 * pUnit->lostCount;
+          printf("reader.cpp:DoRead():sleep for %d s\n", sec);
+          sleep(sec);
+        }
         sendReadCommand(pUnit->getUnitId(), meterIds);
         if (true == _pSi4432->isReceived())
         {
+          pUnit->lostCount = 0;
             vector<unsigned char> rdBackData = _pSi4432->fifoRead();
             /*****************DEBUG*********************/
             printf("reader.cpp:DoRead():rdBackData is\n");
@@ -106,8 +114,13 @@ void Reader::DoRead(Unit * pUnit)
                 _pSi4432->isReceived();
             }
         }
+        else if (3 > pUnit->lostCount)
+        {
+          pUnit->lostCount++;
+        }
         else
         {
+          pUnit->lostCount = 0;
             int tmpMeterNumber = pUnit->getCurrentMeter();
             int tmpMeterId = meterIds[tmpMeterNumber];
             unsigned char * pData = new unsigned char[38];

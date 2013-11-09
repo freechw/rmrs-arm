@@ -29,6 +29,7 @@ class Unit
         short getUnitId();
         void plusClearNum();
         unsigned char getClearNum();
+        int lostCount;
 
         Unit();
     private:

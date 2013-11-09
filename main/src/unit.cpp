@@ -104,14 +104,14 @@ void Unit::meterDataUploadProcess()
             list<unsigned char *> meterData = readyLine;
             readyLine.clear();
             sem_post(&readyLineLock);
-            printf("unit.cpp:meterDataUploadProcess():Unit%d, send Message\n", unitId);
+            printf("unit.cpp:meterDataUploadProcess():Unit0x%.2x, send Message\n", unitId);
             _net->sendMeterData(unitId, meterData);
             _record->recordMeterData(meterData);
         }
         else
         {
             sem_post(&readyLineLock);
-            printf("unit.cpp:meterDataUploadProcess():Unit%d, Line Empty!\n", unitId);
+            printf("unit.cpp:meterDataUploadProcess():Unit0x%.2x, Line Empty!\n", unitId);
         }
     }
 
@@ -166,6 +166,7 @@ Unit::Unit()
     currentLineFull = false;
     currentLineCleared = false;
     _clearNum = 0;
+    lostCount = 0;
 
     waitingLine.clear();
     currentLine.clear();
